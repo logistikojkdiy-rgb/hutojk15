@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Layar Panggung — Fun Walk HUT OJK Ke-15 DIY</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --bg: #0B0E14;
+      --surface: #131924;
+      --surface-2: #1A2232;
+      --border: rgba(255, 255, 255, 0.08);
+      --ink: #F8FAFC;
+      --ink-2: #CBD5E1;
+      --muted: #8B98AC;
+      --accent: #FC4C02;
+      --gold: #E2A958;
+      --ok: #16A34A;
+    }
+    [data-theme="light"] {
+      --bg: #F1F5F9;
+      --surface: #FFFFFF;
+      --surface-2: #F8FAFC;
+      --border: rgba(15, 23, 42, 0.1);
+      --ink: #0F172A;
+      --ink-2: #334155;
+      --muted: #64748B;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: var(--bg); color: var(--ink);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .stage {
+      display: grid;
+      grid-template-columns: 1.55fr 1fr;
+      gap: 20px;
+      width: 100vw;
+      height: 100vh;
+      padding: 20px;
+    }
+    .map-panel {
+      position: relative;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    #map3d { width: 100%; height: 100%; }
+    .map-overlay-top {
+      position: absolute; top: 18px; left: 18px; right: 18px;
+      display: flex; justify-content: space-between; align-items: center;
+      pointer-events: none; z-index: 10;
+    }
+    .pill {
+      pointer-events: auto;
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 10px 16px; border-radius: 999px;
+      background: rgba(11, 14, 20, 0.78);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.14);
+      font-size: 14px; font-weight: 500; color: var(--ink);
+    }
+    .dot-live {
+      width: 9px; height: 9px; border-radius: 999px;
+      background: var(--ok); box-shadow: 0 0 12px var(--ok);
+    }
+    .map-overlay-bot {
+      position: absolute; bottom: 18px; left: 18px; right: 18px;
+      display: flex; justify-content: space-between; align-items: flex-end;
+      pointer-events: none; z-index: 10;
+    }
+    .route-card {
+      background: rgba(11, 14, 20, 0.82);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 18px; padding: 14px 18px;
+      display: flex; gap: 24px; align-items: center;
+    }
+    .stat-k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+    .stat-v { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+    .stat-v.orange { color: var(--accent); }
+
+    .info-panel {
+      display: flex; flex-direction: column; justify-content: space-between;
+      gap: 16px; height: 100%;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 20px 22px;
+    }
+    .brand-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    }
+    .brand-left { display: flex; align-items: center; gap: 14px; }
+    .brand-logo {
+      width: 54px; height: 54px; border-radius: 14px;
+      background: #fff; padding: 5px; object-fit: contain;
+    }
+    .brand-title { font-size: 19px; font-weight: 600; letter-spacing: -0.2px; }
+    .brand-sub { font-size: 13px; color: var(--gold); margin-top: 2px; font-weight: 500; }
+    .clock-box { text-align: right; }
+    .clock-time { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+    .clock-date { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .qr-card {
+      flex: 1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; gap: 14px;
+      background: linear-gradient(180deg, var(--surface) 0%, #101520 100%);
+    }
+    .qr-wrap {
+      background: #fff; padding: 14px; border-radius: 20px;
+      box-shadow: 0 14px 36px rgba(0,0,0,0.45);
+    }
+    .qr-title { font-size: 18px; font-weight: 600; }
+    .qr-desc { font-size: 13px; color: var(--ink-2); max-width: 300px; line-height: 1.45; }
+    .qr-url {
+      font-size: 12px; color: var(--accent); font-weight: 500;
+      background: rgba(252, 76, 2, 0.12); padding: 6px 12px; border-radius: 999px;
+    }
+
+    .event-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+    .ev-item {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 16px; padding: 14px 16px;
+    }
+    .ev-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .ev-val { font-size: 15px; font-weight: 600; margin-top: 4px; color: var(--ink); }
+
+    .btn-fs {
+      pointer-events: auto;
+      background: var(--surface-2); color: var(--ink);
+      border: 1px solid var(--border); border-radius: 999px;
+      padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-fs:hover { border-color: rgba(255,255,255,0.28); }
+    .pin-dot {
+      width: 26px; height: 26px; border-radius: 999px;
+      background: #161D2B; color: #fff; border: 2px solid #fff;
+      font-size: 11px; font-weight: 600; display: grid; place-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .pin-dot.start { background: var(--accent); }
+
+    @media (max-width: 960px) {
+      .stage { grid-template-columns: 1fr; grid-template-rows: 1fr auto; overflow-y: auto; height: auto; min-height: 100vh; }
+      .map-panel { min-height: 52vh; }
+    }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <section class="map-panel">
+      <div id="map3d"></div>
+      <video id="motionVideo" src="motion.mp4" autoplay muted loop playsinline style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2;"></video>
+      <div class="map-overlay-top">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="pill">
+            <span class="dot-live"></span>
+            <span id="wakeStatus">Screen On Aktif</span>
+          </div>
+          <button class="btn-fs" id="btnViewMode" onclick="toggleViewMode()" style="background:rgba(11,14,20,0.78);color:#fff;">
+            <span id="lblViewMode">Video Motion</span>
+          </button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn-fs" id="btnTheme" onclick="toggleTheme()" style="background:rgba(11,14,20,0.78);color:#fff;">
+            <span id="lblTheme">Mode Terang</span>
+          </button>
+          <button class="btn-fs" onclick="toggleFS()" style="background:rgba(11,14,20,0.78);color:#fff;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            <span>Layar Penuh</span>
+          </button>
+        </div>
+      </div>
+      <div class="map-overlay-bot">
+        <div class="route-card">
+          <div>
+            <div class="stat-k">Jarak Rute</div>
+            <div class="stat-v orange">3,10 km</div>
+          </div>
+          <div>
+            <div class="stat-k">Estimasi Jalan</div>
+            <div class="stat-v">43 Menit</div>
+          </div>
+          <div>
+            <div class="stat-k">Koridor</div>
+            <div class="stat-v" style="font-size:15px;font-weight:500;">OJK – Tugu – Mangkubumi – Kotabaru – Sudirman</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="info-panel">
+      <div class="card brand-row">
+        <div class="brand-left">
+          <img src="logo.png" alt="Logo HUT OJK 15" class="brand-logo" />
+          <div>
+            <div class="brand-title">Fun Walk HUT OJK Ke-15</div>
+            <div class="brand-sub">Kantor OJK Daerah Istimewa Yogyakarta</div>
+          </div>
+        </div>
+        <div class="clock-box">
+          <div class="clock-time" id="clockTime">05:30:00</div>
+          <div class="clock-date" id="clockDate">Sabtu, 21 Nov 2026</div>
+        </div>
+      </div>
+
+      <div class="card qr-card">
+        <div class="qr-title">Scan untuk Buka Peta & GPS HP</div>
+        <div class="qr-wrap" id="qrcode"></div>
+        <div class="qr-desc">Arahkan kamera HP Anda untuk memantau rute 3D secara realtime, hitung langkah, dan foto selfie finisher.</div>
+        <div class="qr-url">logistikojkdiy-rgb.github.io/funwalk-ojk-15</div>
+      </div>
+
+      <div class="event-grid">
+        <div class="ev-item">
+          <div class="ev-label">Waktu Start</div>
+          <div class="ev-val">05.30 WIB • Kantor OJK</div>
+        </div>
+        <div class="ev-item">
+          <div class="ev-label">Hadiah & Kuliner</div>
+          <div class="ev-val">400 Doorprize • Soto & Tumpeng</div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const TARGET_URL = "https://logistikojkdiy-rgb.github.io/funwalk-ojk-15/";
+    new QRCode(document.getElementById("qrcode"), {
+      text: TARGET_URL, width: 210, height: 210,
+      colorDark: "#0B0E14", colorLight: "#FFFFFF", correctLevel: QRCode.CorrectLevel.M
+    });
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("clockTime").textContent = now.toLocaleTimeString("id-ID", { hour12: false });
+      document.getElementById("clockDate").textContent = now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
+    }
+    updateClock(); setInterval(updateClock, 1000);
+
+    let wakeLock = null;
+    async function keepAwake() {
+      try {
+        if ("wakeLock" in navigator) {
+          wakeLock = await navigator.wakeLock.request("screen");
+          document.getElementById("wakeStatus").textContent = "Screen On Aktif";
+        }
+      } catch (_) {}
+    }
+    keepAwake();
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") keepAwake(); });
+
+    let isDark = true, showMotion = false;
+    function toggleTheme() {
+      isDark = !isDark;
+      document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+      document.getElementById("lblTheme").textContent = isDark ? "Mode Terang" : "Mode Gelap";
+      map.setStyle(isDark ? "https://tiles.openfreemap.org/styles/dark" : "https://tiles.openfreemap.org/styles/liberty");
+    }
+    function toggleViewMode() {
+      showMotion = !showMotion;
+      const mv = document.getElementById("motionVideo");
+      mv.style.display = showMotion ? "block" : "none";
+      if (showMotion) mv.play().catch(() => {}); else mv.pause();
+      document.getElementById("lblViewMode").textContent = showMotion ? "Peta 3D Rute" : "Video Motion";
+    }
+    function toggleFS() {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+      else document.exitFullscreen().catch(() => {});
+    }
+
+    const ROUTE_COORDS = [
+      [110.36797, -7.78284],[110.36709, -7.78289],[110.36700, -7.78360],[110.36690, -7.78435],
+      [110.36675, -7.78520],[110.36661, -7.78610],[110.36647, -7.78702],[110.36634, -7.78795],
+      [110.36621, -7.78885],[110.36613, -7.78945],[110.36610, -7.78973],[110.36685, -7.78976],
+      [110.36765, -7.78978],[110.36835, -7.78979],[110.36905, -7.78977],[110.36980, -7.78962],
+      [110.37055, -7.78926],[110.37128, -7.78882],[110.37198, -7.78836],[110.37265, -7.78792],
+      [110.37338, -7.78748],[110.37412, -7.78703],[110.37468, -7.78655],[110.37485, -7.78580],
+      [110.37497, -7.78485],[110.37510, -7.78390],[110.37523, -7.78300],[110.37450, -7.78295],
+      [110.37345, -7.78293],[110.37240, -7.78291],[110.37135, -7.78289],[110.37030, -7.78287],
+      [110.36925, -7.78285],[110.36840, -7.78284],[110.36797, -7.78284]
+    ];
+    const PINS = [
+      { code: "S", lng: 110.36797, lat: -7.78284, start: true },
+      { code: "1", lng: 110.36709, lat: -7.78289 },
+      { code: "2", lng: 110.36661, lat: -7.78610 },
+      { code: "3", lng: 110.36610, lat: -7.78973 },
+      { code: "4", lng: 110.37265, lat: -7.78792 },
+      { code: "5", lng: 110.37523, lat: -7.78300 }
+    ];
+
+    const map = new maplibregl.Map({
+      container: "map3d",
+      style: "https://tiles.openfreemap.org/styles/dark",
+      center: [110.3706, -7.7864],
+      zoom: 15.1, pitch: 54, bearing: -12, antialias: true
+    });
+    map.on("styleimagemissing", e => {
+      if (!map.hasImage(e.id)) map.addImage(e.id, { width: 1, height: 1, data: new Uint8Array(4) });
+    });
+    map.on("style.load", () => {
+      if (!map.getSource("r-full")) {
+        map.addSource("r-full", { type: "geojson", data: { type: "Feature", geometry: { type: "LineString", coordinates: ROUTE_COORDS } } });
+        map.addLayer({ id: "r-case", type: "line", source: "r-full", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": isDark ? "#FFFFFF" : "#0F172A", "line-width": 10, "line-opacity": isDark ? 0.8 : 0.35 } });
+        map.addLayer({ id: "r-main", type: "line", source: "r-full", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#FC4C02", "line-width": 6 } });
+      }
+    });
+    map.on("load", () => {
+      PINS.forEach(p => {
+        const el = document.createElement("div");
+        el.className = "pin-dot" + (p.start ? " start" : "");
+        el.textContent = p.code;
+        new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(map);
+      });
+      let b = -12;
+      setInterval(() => { b = (b + 0.15) % 360; map.setBearing(b); }, 50);
+    });
+  </script>
+</body>
+</html>
